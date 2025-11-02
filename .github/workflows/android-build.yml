@@ -29,9 +29,37 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install --upgrade buildozer cython
 
-      - name: Initialize Buildozer (download SDK/NDK)
+      # 🧱 Cache SDK, NDK, and Buildozer environment to speed up builds
+      - name: Cache Buildozer environment
+        uses: actions/cache@v3
+        with:
+          path: |
+            .buildozer
+            $HOME/.buildozer
+            $HOME/android-sdk
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
+      - name: Set up Android SDK and accept licenses
         run: |
-          # Run once to initialize SDK, NDK, and python-for-android
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          if [ ! -d "latest" ]; then
+            echo "📦 Installing Android command line tools..."
+            wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+            unzip -q tools.zip
+            mkdir latest
+            mv cmdline-tools/* latest/ || true
+          fi
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          yes | sdkmanager --licenses || true
+          sdkmanager --update
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;36.1.0"
+
+      - name: Initialize Buildozer (first run)
+        run: |
           buildozer android debug || true
 
       - name: Clean previous builds
@@ -41,3 +69,9 @@ jobs:
       - name: Build debug APK
         run: |
           buildozer android debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WalletHunterApp-debug.apk
+          path: bin/*.apk

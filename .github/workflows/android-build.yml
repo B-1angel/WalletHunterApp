@@ -29,7 +29,7 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install --upgrade buildozer cython
 
-      # ⚡ Cache SDK, NDK, and Buildozer folders to make subsequent builds faster
+      # ⚡ Cache Buildozer environment and SDK to avoid re-downloading 2–3 GB every run
       - name: Cache Buildozer environment
         uses: actions/cache@v3
         with:
@@ -40,22 +40,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      # 🏗️ Step 1 — Initialize Buildozer (downloads SDK/NDK internally)
+      # 🏗️ Step 1 — Initialize Buildozer to download its internal SDK/NDK
       - name: Initialize Buildozer
         run: |
           buildozer android debug || true
 
-      # 🧾 Step 2 — Accept licenses INSIDE Buildozer’s SDK
+      # 🧾 Step 2 — Install SDK command-line tools and accept licenses inside Buildozer's SDK
       - name: Accept Buildozer internal SDK licenses
         run: |
           export ANDROID_SDK_ROOT=$PWD/.buildozer/android/platform/android-sdk
           export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-          echo "Accepting Android SDK licenses inside Buildozer's SDK..."
+
+          echo "📦 Installing Android command line tools into Buildozer SDK..."
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
+
+          # Download Google cmdline tools if missing
+          if [ ! -d "latest" ]; then
+            wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+            unzip -q tools.zip
+            mkdir latest
+            mv cmdline-tools/* latest/ || true
+            rm -rf cmdline-tools tools.zip
+          fi
+
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+
+          echo "✅ Accepting Android SDK licenses inside Buildozer's SDK..."
           yes | sdkmanager --licenses || true
           sdkmanager --update
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;36.1.0"
 
-      # 🧹 Step 3 — Clean previous builds (optional)
+      # 🧹 Step 3 — Clean previous builds
       - name: Clean previous builds
         run: |
           buildozer android clean
@@ -65,7 +81,7 @@ jobs:
         run: |
           buildozer android debug
 
-      # 📦 Step 5 — Upload the generated APK as an artifact
+      # 📦 Step 5 — Upload APK artifact for download
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

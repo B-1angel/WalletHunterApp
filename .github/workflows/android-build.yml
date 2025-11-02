@@ -1,3 +1,0 @@
-git add .github/workflows/android-build.yml
-git commit -m "Add Android build workflow"
-git push

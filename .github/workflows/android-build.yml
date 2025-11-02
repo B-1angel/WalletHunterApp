@@ -2,71 +2,47 @@ name: Android Build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$PATH
 
     steps:
-    # ---------------- Checkout ----------------
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    # ---------------- Setup Python ----------------
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    # ---------------- Install system deps ----------------
-    - name: Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y python3-pip python3-dev git zip unzip openjdk-17-jdk wget build-essential
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip unzip openjdk-17-jdk build-essential wget git
+          python3 -m pip install --upgrade pip setuptools wheel
 
-    # ---------------- Install Buildozer & Cython ----------------
-    - name: Install Buildozer and Cython
-      run: |
-        python3 -m pip install --upgrade pip
-        pip install --upgrade buildozer cython==0.29.36
+      - name: Install Buildozer and Cython
+        run: |
+          python3 -m pip install --upgrade buildozer cython
 
-    # ---------------- Setup Android SDK ----------------
-    - name: Download Android SDK Command-line Tools
-      run: |
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip
-        mv cmdline-tools latest
-        rm cmdline-tools.zip
+      - name: Install Android SDK & Build-Tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          mv cmdline-tools latest
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-    # ---------------- Add SDK to PATH ----------------
-    - name: Configure Android SDK paths
-      run: |
-        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/emulator" >> $GITHUB_PATH
-
-    # ---------------- Accept licenses ----------------
-    - name: Accept Android SDK licenses
-      run: yes | sdkmanager --licenses || true
-
-    # ---------------- Install required SDK packages ----------------
-    - name: Install SDK Build-Tools & Platforms
-      run: |
-        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-    # ---------------- Build APK ----------------
-    - name: Build APK
-      run: |
-        buildozer android debug
-        ls -lh bin/
-
-    # ---------------- Upload APK ----------------
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: wallet-hunter-apk
-        path: bin/*.apk
+      - name: Build APK
+        run: |
+          buildozer android debug
+          ls -lh bin/

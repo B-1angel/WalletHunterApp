@@ -25,6 +25,11 @@ jobs:
           pip install --upgrade pip
           pip install --user buildozer
 
+      - name: Install Python dependencies
+        run: |
+         pip install --upgrade pip setuptools wheel
+         pip install cython buildozer
+    
       - name: Build APK
         run: |
           export PATH=$HOME/.local/bin:$PATH

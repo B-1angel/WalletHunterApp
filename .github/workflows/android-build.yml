@@ -1,37 +1,56 @@
-name: Set up Python
-     Python actions/setup-python@v5
-      with:
-        python-version: "3.11"
+name: Build WalletHunter APK
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip git zip unzip openjdk-17-jdk wget
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-    - name: Install Buildozer + Cython
-      run: |
-        pip install --upgrade pip setuptools wheel
-        pip install buildozer cybuildoze  
-        
-    - name: Install Android SDK & accept licenses
-      run: |
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        curl $HOME/android-sdk/cmdline-tools
-        unrl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        -ozip sdk-tools.zip -d latest
-    rm sdk-tools.zip
-    export ANDROID_SDK_ROOT=$HOME/android-sdk
-    export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
-    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
-    $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30"run   - name: Build APK
-      run: |
-        export PATH=$HOME/.local/bin:$PATH
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        buildozer android debug
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: WalletHunter-APK
-        path: bin/*.apk
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ env.PATH }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y zip unzip openjdk-11-jdk python3-pip python3-setuptools \
+          git python3-virtualenv build-essential libssl-dev libffi-dev libsqlite3-dev \
+          libjpeg-dev zlib1g-dev libncurses5-dev pkg-config
+
+      - name: Install Buildozer and Cython
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install --upgrade buildozer cython==0.29.36
+
+      - name: Install Android SDK & accept licenses
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
+          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip sdk-tools.zip -d latest
+          rm sdk-tools.zip
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          
+      - name: Build APK
+        run: |
+          buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WalletHunter-APK
+          path: bin/*.apk

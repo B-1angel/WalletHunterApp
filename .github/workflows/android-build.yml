@@ -1,63 +1,72 @@
-# .github/workflows/android-build.yml
-name: Build APK
+name: Android Build
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_NDK_HOME: ${{ github.workspace }}/android-sdk/ndk/25b
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ env.PATH }}
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    # ---------------- Checkout ----------------
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+    # ---------------- Setup Python ----------------
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip git zip unzip openjdk-17-jdk wget curl
+    # ---------------- Install system deps ----------------
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip python3-dev git zip unzip openjdk-17-jdk wget build-essential
 
-      - name: Install Buildozer & Cython
-        run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.36
+    # ---------------- Install Buildozer & Cython ----------------
+    - name: Install Buildozer and Cython
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install --upgrade buildozer cython==0.29.36
 
-      - name: Install Android SDK cmdline-tools
-        run: |
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip
-          mv cmdline-tools latest
-          rm cmdline-tools.zip
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
-          # Install required build tools and platforms
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+    # ---------------- Setup Android SDK ----------------
+    - name: Download Android SDK Command-line Tools
+      run: |
+        mkdir -p $HOME/android-sdk/cmdline-tools
+        cd $HOME/android-sdk/cmdline-tools
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip
+        mv cmdline-tools latest
+        rm cmdline-tools.zip
 
-      - name: Symlink SDK for Buildozer
-        run: |
-          mkdir -p ~/.buildozer/android/platform/
-          ln -sfn $ANDROID_SDK_ROOT ~/.buildozer/android/platform/android-sdk
+    # ---------------- Add SDK to PATH ----------------
+    - name: Configure Android SDK paths
+      run: |
+        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+        echo "$HOME/android-sdk/emulator" >> $GITHUB_PATH
 
-      - name: Build APK
-        run: |
-          buildozer android debug
+    # ---------------- Accept licenses ----------------
+    - name: Accept Android SDK licenses
+      run: yes | sdkmanager --licenses || true
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: WalletHunter-APK
-          path: bin/*.apk
+    # ---------------- Install required SDK packages ----------------
+    - name: Install SDK Build-Tools & Platforms
+      run: |
+        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+    # ---------------- Build APK ----------------
+    - name: Build APK
+      run: |
+        buildozer android debug
+        ls -lh bin/
+
+    # ---------------- Upload APK ----------------
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: wallet-hunter-apk
+        path: bin/*.apk

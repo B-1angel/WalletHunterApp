@@ -1,4 +1,5 @@
-# buildozer.spec — tuned for GitHub Actions & KivyMD APK build
+# buildozer.spec (WalletHunter optimized)
+
 [app]
 
 # (str) Title of your application
@@ -13,44 +14,39 @@ package.domain = org.example
 # (str) Package version
 version = 1.0
 
-# (str) Source code directory (where your main.py is)
+# (str) Source code where the main.py is located
 source.dir = .
 
 # (list) Application requirements
-# remove 'python3' (not needed) and pin stable versions
-requirements = kivy==2.1.0, kivymd==1.1.1, requests, mnemonic, bip32utils
+requirements = python3,kivy==2.1.0,kivymd,requests,mnemonic,bip32utils
 
-# (str) Icon of the application (must point to an actual image file, e.g., .png)
-icon.filename = assets/icon.png
+# (str) Icon of the application
+icon.filename = BTCx.png
 
-# (str) Presplash image (optional)
-presplash.filename = assets/presplash.png
-
-# (str) Supported orientation (portrait, landscape, all)
-orientation = portrait
-
-# (int) Android API targets
+# (int) Target SDK (Android)
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
+android.sdk = 33
 
-# (list) Permissions required
-android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
+# (list) Permissions
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 
-# (bool) Include compiled Python files
-include_py = true
+# (str) Orientation
+orientation = portrait
 
-# (bool) Optimize PNGs
-android.strip = false
+# (str) Presplash
+presplash.filename = BTCx.png
 
-# (str) Entry point file (main app)
-main.py = main.py
+# (bool) Copy assets into project
+copy_assets = True
 
-# (str) Logcat filters to use
-log_level = 2
+# (str) Entry point
+# main.py should be at root
+# main.py is default, so no need to change
 
-# (bool) Copy assets to project
-copy_assets = 1
+# (bool) Allow fullscreen
+fullscreen = 0
 
-# (str) Application format (APK or AAB)
-package.format = apk
+# (bool) Use SDL2 (recommended)
+android.entrypoint = org.kivy.android.PythonActivity

@@ -11,25 +11,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
+      # 3️⃣ Install system dependencies
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y zip unzip openjdk-17-jdk tar wget git python3-dev python3-pip build-essential
 
+      # 4️⃣ Install Buildozer & Cython
       - name: Install Buildozer & Cython
         run: |
           python3 -m pip install --upgrade pip
           pip install --upgrade buildozer cython
 
-      # ⚡ Cache Buildozer environment and SDK to avoid re-downloading 2–3 GB every run
+      # 5️⃣ Cache Buildozer environment
       - name: Cache Buildozer environment
         uses: actions/cache@v3
         with:
@@ -40,50 +44,53 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      # 🏗️ Step 1 — Initialize Buildozer to download its internal SDK/NDK
-      - name: Initialize Buildozer
+      # 6️⃣ Install Android SDK + Build Tools and accept licenses
+      - name: Install Android SDK and Build Tools
         run: |
-          buildozer android debug || true
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          unzip -q tools.zip
+          mkdir latest
+          mv cmdline-tools/* latest/
+          rm -rf cmdline-tools tools.zip
 
-      # 🧾 Step 2 — Install SDK command-line tools and accept licenses inside Buildozer's SDK
-      - name: Accept Buildozer internal SDK licenses
-        run: |
-          export ANDROID_SDK_ROOT=$PWD/.buildozer/android/platform/android-sdk
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-
-          echo "📦 Installing Android command line tools into Buildozer SDK..."
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT/cmdline-tools
-
-          # Download Google cmdline tools if missing
-          if [ ! -d "latest" ]; then
-            wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-            unzip -q tools.zip
-            mkdir latest
-            mv cmdline-tools/* latest/ || true
-            rm -rf cmdline-tools tools.zip
-          fi
-
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-
-          echo "✅ Accepting Android SDK licenses inside Buildozer's SDK..."
-          yes | sdkmanager --licenses || true
+          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
+          yes | sdkmanager --licenses
           sdkmanager --update
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;36.1.0"
 
-      # 🧹 Step 3 — Clean previous builds
+      # 7️⃣ Set environment variables for Buildozer to use system SDK
+      - name: Set Android environment
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+      # 8️⃣ Clean Buildozer internal SDK (optional but recommended)
+      - name: Clean internal Buildozer SDK
+        run: |
+          rm -rf .buildozer/android/platform/android-sdk || true
+
+      # 9️⃣ Clean previous builds
       - name: Clean previous builds
         run: |
-          buildozer android clean
+          buildozer android clean || true
 
-      # 🏗️ Step 4 — Build the debug APK
+      # 🔟 Build the debug APK
       - name: Build debug APK
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-          ANDROID_SDK_ROOT: ${{ github.workspace }}/.buildozer/android/platform/android-sdk
+          ANDROID_HOME: $HOME/android-sdk
+          ANDROID_SDK_ROOT: $HOME/android-sdk
+          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH:$PATH
         run: |
-            echo "🧹 Cleaning old Buildozer cache..."
-            rm -rf .buildozer/android/platform/build-* || true
-            export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx2048m'"
-            echo "🚧 Building APK with debug output..."
-            buildozer -v android debug || (echo "❌ Build failed — showing last 100 lines of log:" && tail -n 100 .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build.log && exit 1)
+          buildozer -v android debug
+
+      # 1️⃣1️⃣ Upload APK artifact
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WalletHunterApp-debug.apk
+          path: bin/*.apk

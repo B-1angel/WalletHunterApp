@@ -29,47 +29,43 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install --upgrade buildozer cython
 
-      # 🧱 Cache SDK, NDK, and Buildozer environment to speed up builds
+      # ⚡ Cache SDK, NDK, and Buildozer folders to make subsequent builds faster
       - name: Cache Buildozer environment
         uses: actions/cache@v3
         with:
           path: |
             .buildozer
             $HOME/.buildozer
-            $HOME/android-sdk
           key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      - name: Set up Android SDK and accept licenses
+      # 🏗️ Step 1 — Initialize Buildozer (downloads SDK/NDK internally)
+      - name: Initialize Buildozer
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
-          if [ ! -d "latest" ]; then
-            echo "📦 Installing Android command line tools..."
-            wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-            unzip -q tools.zip
-            mkdir latest
-            mv cmdline-tools/* latest/ || true
-          fi
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          buildozer android debug || true
+
+      # 🧾 Step 2 — Accept licenses INSIDE Buildozer’s SDK
+      - name: Accept Buildozer internal SDK licenses
+        run: |
+          export ANDROID_SDK_ROOT=$PWD/.buildozer/android/platform/android-sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+          echo "Accepting Android SDK licenses inside Buildozer's SDK..."
           yes | sdkmanager --licenses || true
           sdkmanager --update
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;36.1.0"
 
-      - name: Initialize Buildozer (first run)
-        run: |
-          buildozer android debug || true
-
+      # 🧹 Step 3 — Clean previous builds (optional)
       - name: Clean previous builds
         run: |
           buildozer android clean
 
+      # 🏗️ Step 4 — Build the debug APK
       - name: Build debug APK
         run: |
           buildozer android debug
 
+      # 📦 Step 5 — Upload the generated APK as an artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

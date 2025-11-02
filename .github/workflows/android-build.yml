@@ -11,34 +11,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip python3-dev build-essential git zip unzip tar wget openjdk-17-jdk
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
 
-    - name: Install Buildozer and Cython
-      run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install --upgrade buildozer cython
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip unzip openjdk-17-jdk tar wget git python3-dev python3-pip build-essential
 
-    - name: Set up Android SDK
-      run: |
-        mkdir -p $HOME/.buildozer/android/platform
-        cd $HOME/.buildozer/android/platform
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip
-        rm cmdline-tools.zip
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        yes | sdkmanager --licenses
+      - name: Install Buildozer & Cython
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install --upgrade buildozer cython
 
-    - name: Build APK
-      run: |
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        buildozer -v android debug
+      - name: Build APK
+        run: |
+          # Accept all SDK licenses
+          yes | buildozer android sdk update
+          
+          # Clean previous builds
+          buildozer android clean
+          
+          # Build debug APK
+          buildozer android debug

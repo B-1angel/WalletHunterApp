@@ -30,6 +30,11 @@ jobs:
          pip install --upgrade pip setuptools wheel
          pip install cython buildozer
     
+      - name: Accept Android SDK Licenses and Install Build Tools
+        run: |
+         yes | sdkmanager --licenses || true
+         yes | sdkmanager "build-tools;34.0.0" "platforms;android-33" "platform-tools" "ndk;25.1.8937393"
+
       - name: Build APK
         run: |
           export PATH=$HOME/.local/bin:$PATH

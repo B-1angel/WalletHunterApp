@@ -78,12 +78,12 @@ jobs:
 
       # 🏗️ Step 4 — Build the debug APK
       - name: Build debug APK
-        run: |
-          buildozer android debug
-
-      # 📦 Step 5 — Upload APK artifact for download
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: WalletHunterApp-debug.apk
-          path: bin/*.apk
+         env:
+   JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+    ANDROID_SDK_ROOT: ${{ github.workspace }}/.buildozer/android/platform/android-sdk
+  run: |
+    echo "🧹 Cleaning old Buildozer cache..."
+    rm -rf .buildozer/android/platform/build-* || true
+    export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx2048m'"
+    echo "🚧 Building APK with debug output..."
+    buildozer -v android debug || (echo "❌ Build failed — showing last 100 lines of log:" && tail -n 100 .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build.log && exit 1)

@@ -31,11 +31,8 @@ jobs:
 
       - name: Build APK
         run: |
-          # Accept all SDK licenses
-          yes | buildozer android sdk update
-          
           # Clean previous builds
           buildozer android clean
           
-          # Build debug APK
+          # Build debug APK (Buildozer downloads SDK/NDK automatically)
           buildozer android debug

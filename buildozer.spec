@@ -10,6 +10,9 @@ package.name = wallethunter
 # (str) Package domain (reverse domain)
 package.domain = org.example
 
+# (str) Package version
+package.version = 1.0
+
 # (str) Source code where the main.py is located
 source.dir = .
 

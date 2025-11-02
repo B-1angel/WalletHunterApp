@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-pip build-essential git zip unzip openjdk-11-jdk autoconf libtool pkg-configure
+          sudo apt install -y python3-pip build-essential git zip unzip openjdk-11-jdk autoconf libtool pkg-config
           pip install --upgrade pip
           pip install --user buildozer
 
